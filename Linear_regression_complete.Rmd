@@ -1,0 +1,217 @@
+---
+title: "Linear regression workshop"
+author: "Timothy P Morris"
+date: "9/2022"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+1. Import data 
+2. Tidy data 
+3. Summarize and visualize your data
+4. Check for assumptions (visually and statistically) 
+5. Transform your data if necessary (outlier removal, transformations)
+6. Run your model
+7. Plot your model 
+8. Extract standardized coefficients 
+9. Confounders 
+10. Interactions and simple slopes (continuous continuous and continuous categorical interactions)
+11. Bootstrapping
+12. 
+
+#load libraries
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(tidymodels)
+library(psych)
+library(corrr)
+library(nlme)
+library(ggstatsplot)
+library(glmnet)
+library(fpc)
+```
+# import the data
+```{r}
+#load and sort data data
+setwd("/Users/timothymorris/iCloud/Studies/hcpd") # set working dir
+
+load(file = "middle.Rdata")
+```
+# summarize and visualize your data
+```{r}
+#summarise the whole df
+#library(psych)
+describe(middle)
+#create new df and do corr plot and histograms
+demos <- middle %>%
+  select(bmi,
+         sex,
+         educ,
+         age,
+         SES,
+         pds)
+print(kable(middleniih))
+pairs.panels(demos)
+#again for smaller n of vars
+nih <- middle %>%
+  select(walk_enduro, 
+         gait_speed,
+         dexterity,
+         grip_strength)
+pairs.panels(nih)
+#plot corr plot with fun network plot 
+#library(corrr)
+middle %>%
+  select(age,bmi:grip_strength) %>%
+  na.omit() %>%
+  correlate() %>%
+  rearrange() %>%
+  network_plot(colours = c("orange", "white", "midnightblue"))
+#summarise by group or groups of vars
+# Group by a single variable (in this case by sex)
+middle %>%
+  group_by(sex) %>%
+  summarise_all(mean)
+
+# group by several variables (group by sex and physical activity category and summarise bmi)
+middle %>%
+group_by(sex, PA_cat12) %>%
+  summarise(
+    n = n(),
+    mean = mean(bmi),
+    sd = sd(bmi)
+  )
+
+# take a closer look at some of the distributions with density plots
+
+# Histogram overlaid with kernel density curve
+ggplot(middle, aes(x=bmi)) + 
+    geom_histogram(aes(y=..density..),      # Histogram with density instead of count on y-axis
+                   binwidth=.5,
+                   colour="black", fill="white") +
+    geom_density(alpha=.2, fill="#FF6666")  # Overlay with transparent density plot
+
+# overlaid hist by groups
+# Overlaid histograms
+middle$sex <- as.factor(middle$sex) # convert sex to cat
+ggplot(middle, aes(x=bmi, fill=sex)) +
+    geom_histogram(binwidth=.5, alpha=.5, position="identity")
+
+```
+# run simple and multiple linear regressions
+```{r}
+#model
+lmodel <- summary(lm(cog_fluid ~ bmi, data = middle))
+lmodel
+```
+# plot your model
+```{r}
+# note- run chunk x (last chunk first to create function)
+scatterplot(middle, bmi, cog_fluid, "bmi", "gait speed") # x is predictor (independant) and y is dependent. 
+```
+# check linear regression assumptions: (1. indepedence 2. Linearity 3. Homogeneity of variance 4. normality of residuals)
+# function "diagnostics" needs to be provided with x and y as 'd$x, d$y' 
+```{r}
+
+# see this website for a good explanation: https://data.library.virginia.edu/diagnostic-plots/ 
+
+#visually check for asusmptions using this function 
+diagnostics <-function(y,x) {
+par(mfrow=c(2,2)) #plots 4 plots to visually check assumptions 
+plot(lm({{y}} ~ {{x}}))
+}
+
+diagnostics(middle$bmi, middle$cog_fluid)
+
+#1 Linearity is only really a problem in time series data- but gets to basic algebra- is the relatiionship between two variables best described as a straight line 𝑦=𝑎+𝑏𝑥 
+
+#2 Independence is more if a theoretical issue (are these two variables independent of each other)
+
+#3 Homoscedacticity Briefly summarizing the information from the websites above, heteroscedasticity does not introduce a bias in the estimates of your coefficients. However, given heteroscedasticity, you are not able to properly estimate the variance-covariance matrix. Hence, the standard errors of the coefficients are wrong. This means that one cannot compute any t-statistics and p-values and consequently hypothesis testing is not possible. 
+
+#4 Normality of the residuals- similar to heteroscedasticity, if this assumption is violated then the error across the model (predictivness of x on y) is not constant across different levels of x- i.e., the predictor means different things are different levels of the dependent variable- this assumption is not such a big issue with large datasets. 
+# In this example we can see that the normality of the residuals is violated. Given the large sample size its probably ok, but lets transform the dep[endant variable anyway to see what it does.
+
+# If we violated the assumption of homoscedasticity, we could try and transform our response/dependent variable. 
+
+# OUTLIERS - the residual vsa leverage plot shows us influential outliers using Cook's distance of 0.5 and tells us if any data points are significantly influential over the models coefficients. 
+
+# formally check - you can formally (instead of visually) check for two of these assumptions using a Shapiro-Wilk Test (normality of residuals) and 
+
+# transform predictor using log10
+
+middle$bmilog <- log10(middle$bmi)
+hist(middle$bmilog)
+
+logfmodel <- summary(lm(cog_fluid ~ bmilog, data = middle))
+logfmodel
+diagnostics(middle$bmilog, middle$cog_fluid)
+
+```
+# run multiple linear regresison checking for multicolinearity
+```{r}
+
+lmmodel <- lm(cog_fluid ~ dexterity + bmilog, data = middle)
+summary(lmmodel)
+install.packages("car")
+library(car)
+vif(lm(cog_fluid ~ dexterity + bmilog + sex, data = middle))# if larger than 10 
+ 
+vif(lm(bmi ~ cog_fluid + cog_total + cog_crystal + sex, data = middle))# if larger than 10 
+
+```
+# extract standardized beta coefficients 
+```{r}
+install.packages("QuantPsyc")
+library(QuantPsyc)
+lm.beta(lmmodel)
+```
+# control for multiple comparison corrections
+```{r}
+# note, this is for when we run several independent models - for corrections of ANOVA or the like Bonferoni, Tukey HSD are preffered. 
+
+# create a df with two columns, one for the number of comparisons and the other for the p value - and rank them.
+
+pvals <- data.frame(number = c(1,2,3,4,5),
+                 pvalue = c(0.001, 0.02, 0.05, 0.65, 0.77)
+                 )
+
+# run fdr
+
+pvals$fdrval<-p.adjust(pvals$pvalue, method="fdr")
+pvals
+```
+
+# run multilevel model accounting for site 
+```{r}
+summary(lme(cog_fluid~ dexterity + age + sex + SES + pds, random=~1|site, data=middle)) # 2 clusters
+
+```
+# Plotting 
+```{r}
+
+# for an amazing resource of R plots see: http://r-graph-gallery.com/ 
+
+# Run lines 2-18 once to create function, then call function using scatterplot(dataframe, x, y, "ylab", "xlab")
+library(rlang)
+library(ggplot2)
+scatterplot <- function(dataframe, x, y, xlab, ylab) {
+  ggplot(data = dataframe, aes(x={{x}}, y = {{y}})) + 
+    geom_point(color =  "#663399") + 
+    theme(
+      # Hide panel borders and remove grid lines
+      panel.border = element_blank(),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.background = element_blank(),
+      # Change axis line
+      axis.line = element_line(colour = "black")
+    ) +
+    labs(y=ylab, x=xlab) +
+    stat_smooth(method = "lm", col = "#cc8400")
+}
+```
+
+
