@@ -35,9 +35,11 @@ library(fpc)
 # import the data
 ```{r}
 #load and sort data data
-setwd("/Users/timothymorris/iCloud/Studies/hcpd") # set working dir
+setwd("/Users/timothy/iCloud/1.Tims_Team_Lab/statistics") # set working dir
 
 load(file = "middle.Rdata")
+
+# test this change 
 ```
 # summarize and visualize your data
 ```{r}
