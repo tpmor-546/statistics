@@ -39,12 +39,14 @@ setwd("/Users/timothy/iCloud/1.Tims_Team_Lab/statistics") # set working dir
 
 load(file = "middle.Rdata")
 
+# Tim make this change 
+
 # test this change 
 ```
 # summarize and visualize your data
 ```{r}
 #summarise the whole df
-#library(psych)
+library(psych)
 describe(middle)
 #create new df and do corr plot and histograms
 demos <- middle %>%
@@ -54,7 +56,7 @@ demos <- middle %>%
          age,
          SES,
          pds)
-print(kable(middleniih))
+# print(kable(middleniih))
 pairs.panels(demos)
 #again for smaller n of vars
 nih <- middle %>%
@@ -155,20 +157,23 @@ diagnostics(middle$bmilog, middle$cog_fluid)
 # run multiple linear regresison checking for multicolinearity
 ```{r}
 
-lmmodel <- lm(cog_fluid ~ dexterity + bmilog, data = middle)
+lmmodel <- lm(cog_fluid ~ dexterity + bmi, data = middle)
 summary(lmmodel)
 install.packages("car")
 library(car)
 vif(lm(cog_fluid ~ dexterity + bmilog + sex, data = middle))# if larger than 10 
  
-vif(lm(bmi ~ cog_fluid + cog_total + cog_crystal + sex, data = middle))# if larger than 10 
+mulitlm <- lm(dexterity ~ cog_fluid + cog_crystal + sex, data = middle)# if larger than 10 
+summary(mulitlm)
+
+vif(lm(dexterity ~ cog_fluid + cog_crystal + sex, data = middle))# if larger than 10 
 
 ```
 # extract standardized beta coefficients 
 ```{r}
 install.packages("QuantPsyc")
 library(QuantPsyc)
-lm.beta(lmmodel)
+lm.beta(mulitlm)
 ```
 # control for multiple comparison corrections
 ```{r}
@@ -185,6 +190,9 @@ pvals <- data.frame(number = c(1,2,3,4,5),
 pvals$fdrval<-p.adjust(pvals$pvalue, method="fdr")
 pvals
 ```
+
+
+
 
 # run multilevel model accounting for site 
 ```{r}
