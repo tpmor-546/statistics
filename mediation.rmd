@@ -1,0 +1,46 @@
+---
+title: "mediation/sensitivity"
+author: "Timothy Morris PhD"
+date: "10/20/2022"
+output: html_document
+---
+
+# mediation models controlling for age, gender, SES and later life experiences
+```{r}
+set.seed(356)
+library(mediation)
+model.M <- lm(educ ~ EELA + composite_23_items_LAQ + currentAge + sex_2_female_1_male + Mom_SES, eela_all )
+model.Y <- lm(Pre_z_execut_composite ~ EELA + educ + composite_23_items_LAQ + currentAge + sex_2_female_1_male + Mom_SES, eela_all)
+results <- mediate(model.M, model.Y, treat='EELA', mediator='educ',
+                   boot=TRUE, sims=1000)
+summary(results)
+summary(model.M)
+summary(model.Y)
+
+# The mediation (indirect, denoted as “ACME”) effects are calculated as the average difference between the direct and total effect. That is, if the effect of X on Y) is reduced significantly when adding M into the model, then it is interpreted as though the mediator explains some of the effect of X on Y. In the mediation package, two linear regression models are fit (the mediator model- the effect of X (EELA) on M (education) + covariates and the outcome model – effect of X on Y including M and covariates). The models constitute the input into the mediation model to calculate the Direct effects (‘ADE’ which is the effect of EELA on cognition and could be interpreted as for every 1-unit increase in EELA there is an x (“estimate”) increase in cognition), the average causal mediation effect, which is the indirect effect of EELA on cognition through education which is calculated as the total effect (the reduction in the effect of X on Y when accounting for M). 
+
+```
+# mediation with general linear model (if your data violate assumptions of linear regression)
+```{r}
+library(mediation)
+model.M <- glm(educ ~ EELA + composite_23_items_LAQ + currentAge + sex_2_female_1_male + Mom_SES, eela_all, family=gaussian(link=identity))
+model.Y <- glm(Pre_z_vocab_composite ~ EELA + educ + composite_23_items_LAQ + currentAge + sex_2_female_1_male + Mom_SES, eela_all, family=gaussian(link=identity))
+results <- mediate(model.M, model.Y, treat='EELA', mediator='educ',
+                   boot=TRUE, sims=1000)
+summary(results)
+summary(model.M)
+summary(model.Y)
+```
+#sensitivity analysis
+```{r}
+sens.cont <- medsens(results, rho.by = 0.05)
+summary(sens.cont)
+plot(sens.cont, sens.par = "rho") # plots  the dashed horizontal line represents the estimated mediation effect under the sequential ignorability assumption
+#and the solid line represents the mediation effect under various values of ρ. The gray region represents the 95% confidence bands.
+plot(sens.cont, sens.par = "R2", r.type = 2,
+     sign.prod = 1) # r.type 2 R~R~ = the proportion of the original variance explained by an unobserved confounder, sign.prod = unobserved confounder affects both mediator and outcome in same direciton (use -1 for expected opp direction)
+plot(sens.cont, sens.par = "R2", r.type = 1,
+     sign.prod = 1) # r.type 1 (R*R*) = the proportion of the previously unexplained variance in the mediator and outcome variables that is explained by an unobservable pretreatment unconfounder.
+```
+
+
