@@ -1,0 +1,63 @@
+---
+title: "data_wrangling"
+author: "Timothy P Morris, PhD"
+date: "10/25/2022"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+#1 taking very messy .csv data and converting it into usable tabular data
+# load libraries 
+```{r}
+library(readr)
+library(tidyverse)
+```
+
+# import raw data (these .csv files are beahvioral data from HCP-D open access project)
+```{r cars}
+
+#read .csv files
+#library(readr)
+
+X20200527_SomervilleKramerDataRequest_REDCapChild <- read_csv("20200527_SomervilleKramerDataRequest_REDCapChild.csv")
+
+X20200527_SomervilleKramerDataRequest_REDCapParent <- read_csv("20200527_SomervilleKramerDataRequest_REDCapParent.csv")
+
+SomervilleKramer_RePull_SCORES_Duplicates_Removed_Process <- read_csv("SomervilleKramer RePull SCORES Duplicates Removed Process.csv")
+
+SCORES_clean_wdomnondom <- read_csv("SCORES_clean_wdomnondom.csv") # cleaned some of this data in csv file before importing 
+
+matrix <- read_csv("20200605_ SomervilleKramerDataRequest_REDCapQ-Interactive_MatrixReasoning.csv") # matrix reasoning task results
+
+```
+# convert some of these poorly formated .csv files into usable tabluar data
+```{r}
+# Remove any rows with missing subject ID value
+SCORES_clean_wdomnondom <-SCORES_clean_wdomnondom[ !(SCORES_clean_wdomnondom$subject_id %in% NA), ]
+# test 
+
+# create long format version of rows with common names to a df with scorename in one column and the actual score value in another
+pop2 <- SCORES_clean_wdomnondom %>%
+  pivot_longer(`Age-Corrected Standard Score`:`Age-Corrected Standard Scores Non-Dominant`, names_to = "scorename", values_to = "score")
+
+# create a wide version that groups by subject ID, the 
+pop3 <- pop2 %>% 
+  group_by(subject_id, Inst, scorename) %>%
+  mutate(rn = row_number()) %>%
+  pivot_wider(names_from = Inst, values_from = score)
+
+pop4 <- pop3 %>%
+  pivot_wider(
+    names_from = scorename,
+    names_sep = ".",
+    values_from = c(`Cognition Total Composite Score v1.1`:`NIH Toolbox Standing Balance Test Age 7+ v2.0`)
+  )
+
+pop5 <- pop4 %>% distinct(subject_id, .keep_all = TRUE)  # removes duplicate rows
+
+# create workable dfs
+scores_clean_wide <- pop5
+child <- X20200527_SomervilleKramerDataRequest_REDCapChild
+parent <- X20200527_SomervilleKramerDataRequest_REDCapParent
+
+```
