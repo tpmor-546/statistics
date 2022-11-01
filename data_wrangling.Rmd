@@ -33,14 +33,14 @@ matrix <- read_csv("20200605_ SomervilleKramerDataRequest_REDCapQ-Interactive_Ma
 # convert some of these poorly formated .csv files into usable tabluar data
 ```{r}
 # Remove any rows with missing subject ID value
-SCORES_clean_wdomnondom <-SCORES_clean_wdomnondom[ !(SCORES_clean_wdomnondom$subject_id %in% NA), ]
+scores <- SCORES_clean_wdomnondom[ !(SCORES_clean_wdomnondom$subject_id %in% NA), ]
 # test 
 
 # create long format version of rows with common names to a df with scorename in one column and the actual score value in another
-pop2 <- SCORES_clean_wdomnondom %>%
+pop2 <- scores %>%
   pivot_longer(`Age-Corrected Standard Score`:`Age-Corrected Standard Scores Non-Dominant`, names_to = "scorename", values_to = "score")
 
-# create a wide version that groups by subject ID, the 
+# create a wide version that groups by subject ID. 
 pop3 <- pop2 %>% 
   group_by(subject_id, Inst, scorename) %>%
   mutate(rn = row_number()) %>%
@@ -61,3 +61,39 @@ child <- X20200527_SomervilleKramerDataRequest_REDCapChild
 parent <- X20200527_SomervilleKramerDataRequest_REDCapParent
 
 ```
+# filtering 
+```{r}
+load(file = "hd8.Rdata")
+hd8$agecat <- cut(hd8$age, 
+                  breaks=c(-Inf, 11.99, 14.99, Inf), 
+                  labels=c("elementary","middle","high"))
+
+high <- hd8 %>% dplyr::filter(hd8$age > 12.99)
+
+demos <- high %>%
+  select(bmi,
+         sex,
+         educ,
+         age,
+         SES,
+         pds)
+
+demos <- demos %>%
+    rename("clinicallycrap" = "bmi")
+```
+#merging
+```{r}
+covarstest <- left_join(imaging_15_noFA, covars, by = "subjectID")             
+
+```
+# adding and forgetting
+```{r}
+high <- high$age[-(6),]
+
+fmri_degree_15['meanFD'] <- meanFD146 # append residuals to dataframe 
+
+
+
+
+```
+
