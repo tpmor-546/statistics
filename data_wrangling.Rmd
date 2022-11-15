@@ -68,7 +68,9 @@ hd8$agecat <- cut(hd8$age,
                   breaks=c(-Inf, 11.99, 14.99, Inf), 
                   labels=c("elementary","middle","high"))
 
-high <- hd8 %>% dplyr::filter(hd8$age > 12.99)
+high <- hd8 %>% dplyr::filter(hd8$age > 14.99)
+middle <- hd8 %>% dplyr::filter(between(hd8$age, 11.99, 14.99))
+elementary <- hd8 %>% dplyr::filter(hd8$age < 11.99)
 
 demos <- high %>%
   select(bmi,
@@ -80,11 +82,18 @@ demos <- high %>%
 
 demos <- demos %>%
     rename("clinicallycrap" = "bmi")
+
+# remove specific variables from a df
+high <- dplyr::select(high,-c(pa, cog_fluid)) # removes two vars var from tibble
+
 ```
 #merging
 ```{r}
-covarstest <- left_join(imaging_15_noFA, covars, by = "subjectID")             
+# the following functions use dplyr mutate-joins functions 
 
+inner <- inner_join(middle, high)
+covarstest <- left_join(middle, high, by = "subjectID")             
+covarright <- right_join()
 ```
 # adding and forgetting
 ```{r}
@@ -92,8 +101,21 @@ high <- high$age[-(6),]
 
 fmri_degree_15['meanFD'] <- meanFD146 # append residuals to dataframe 
 
-
-
-
+```
+# checking for missing data
+```{r}
+df <- eela_all %>%
+  select(F1_Active_Engagement_goldsmith,
+         F2_Perceptual_Abilities_goldsmith,
+         F3_Musical_Training_goldsmith,
+         bmim0,
+         sedTm0)
+library(VIM)
+aggr_plot <- aggr(df, col=c('navyblue','red'), numbers=TRUE, sortVars=TRUE, labels=names(data), cex.axis=.7, gap=3, ylab=c("Histogram of missing data","Pattern"))
+pMiss <- function(x){sum(is.na(x))/length(x)*100}
+apply(df,2,pMiss) # tells me percentage of data that doestn exitss for each var in df
+# then remove participants who are missing more than 20% of their data 
+apply(df,1,pMiss) # tells me which samples (participants) are missing more than one data piece (in this case 60 measn 3 out of 5 vars are missing for some samples)
+#create tibble with comeplte data and no feature reduction 
 ```
 
