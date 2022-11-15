@@ -68,9 +68,9 @@ hd8$agecat <- cut(hd8$age,
                   breaks=c(-Inf, 11.99, 14.99, Inf), 
                   labels=c("elementary","middle","high"))
 
-high <- hd8 %>% dplyr::filter(hd8$age > 14.99)
-middle <- hd8 %>% dplyr::filter(between(hd8$age, 11.99, 14.99))
-elementary <- hd8 %>% dplyr::filter(hd8$age < 11.99)
+high <- hd8 %>% dplyr::filter(hd8$age > 14.99) # takes those above this value
+middle <- hd8 %>% dplyr::filter(between(hd8$age, 11.99, 14.99)) # takes subjects between two values of the given variable (in this case "age)
+elementary <- hd8 %>% dplyr::filter(hd8$age < 11.99) # takes those below this value 
 
 demos <- high %>%
   select(bmi,
@@ -80,12 +80,15 @@ demos <- high %>%
          SES,
          pds)
 
+demo <- high %>% select(subject_id:bmi)
+
 demos <- demos %>%
-    rename("clinicallycrap" = "bmi")
+    rename("bmi_log" = "bmi")
 
 # remove specific variables from a df
-high <- dplyr::select(high,-c(pa, cog_fluid)) # removes two vars var from tibble
-
+high <- high %>%
+  select(-c(pa, cog_fluid))
+  
 ```
 #merging
 ```{r}
